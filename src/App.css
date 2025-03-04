@@ -1,0 +1,16 @@
+body{
+    background-color: #181a1c;
+}
+.app{
+    text-align: center;
+
+}
+ .container{
+    background-color: cadetblue;
+    justify-content: center;
+    width: 59%;
+    margin-left: 26%;
+    margin-top:5% ;
+    text-align: center;
+    padding: 20px;
+ }
