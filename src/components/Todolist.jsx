@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 const TodoList = () => {
   const [tasks, setTasks] = useState([]);
@@ -19,40 +20,33 @@ const TodoList = () => {
     }
   }, []);
 
-  // Save tasks to localStorage whenever tasks change
   useEffect(() => {
-    if (tasks.length > 0) {
-      localStorage.setItem("tasks", JSON.stringify(tasks));
-    }
+    localStorage.setItem("tasks", JSON.stringify(tasks));
   }, [tasks]);
 
   const addTask = () => {
     if (!taskInput.trim()) return;
     const newTask = {
-      id: Date.now(),
+      id: Date.now().toString(),
       text: taskInput,
       completed: false,
       priority: Math.floor(Math.random() * 3) + 1,
       createdAt: new Date(),
     };
-    const updatedTasks = [...tasks, newTask];
-    setTasks(updatedTasks);
-    localStorage.setItem("tasks", JSON.stringify(updatedTasks));
+    setTasks([...tasks, newTask]);
     setTaskInput("");
   };
 
   const toggleComplete = (id) => {
-    const updatedTasks = tasks.map((task) =>
-      task.id === id ? { ...task, completed: !task.completed } : task
+    setTasks(
+      tasks.map((task) =>
+        task.id === id ? { ...task, completed: !task.completed } : task
+      )
     );
-    setTasks(updatedTasks);
-    localStorage.setItem("tasks", JSON.stringify(updatedTasks));
   };
 
   const deleteTask = (id) => {
-    const updatedTasks = tasks.filter((task) => task.id !== id);
-    setTasks(updatedTasks);
-    localStorage.setItem("tasks", JSON.stringify(updatedTasks));
+    setTasks(tasks.filter((task) => task.id !== id));
   };
 
   const startEditing = (id, text) => {
@@ -61,13 +55,19 @@ const TodoList = () => {
   };
 
   const saveEdit = (id) => {
-    const updatedTasks = tasks.map((task) =>
-      task.id === id ? { ...task, text: editText } : task
+    setTasks(
+      tasks.map((task) => (task.id === id ? { ...task, text: editText } : task))
     );
-    setTasks(updatedTasks);
-    localStorage.setItem("tasks", JSON.stringify(updatedTasks));
     setEditingTaskId(null);
     setEditText("");
+  };
+
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+    const reorderedTasks = Array.from(tasks);
+    const [movedTask] = reorderedTasks.splice(result.source.index, 1);
+    reorderedTasks.splice(result.destination.index, 0, movedTask);
+    setTasks(reorderedTasks);
   };
 
   const filteredTasks = tasks.filter((task) => {
@@ -80,7 +80,6 @@ const TodoList = () => {
     <div className="todo-container">
       <h2>📋 To-Do List</h2>
 
-      {/* Input and Add Button */}
       <div>
         <input
           type="text"
@@ -91,7 +90,6 @@ const TodoList = () => {
         <button onClick={addTask}>Add</button>
       </div>
 
-      {/* Filter Control */}
       <div>
         <label>Filter: </label>
         <select onChange={(e) => setFilter(e.target.value)} value={filter}>
@@ -101,35 +99,56 @@ const TodoList = () => {
         </select>
       </div>
 
-      {/* Task List */}
-      <ul>
-        {filteredTasks.map((task) => (
-          <li key={task.id} className={task.completed ? "completed" : ""}>
-            {editingTaskId === task.id ? (
-              <>
-                <input
-                  type="text"
-                  value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
-                />
-                <button onClick={() => saveEdit(task.id)}>Save</button>
-              </>
-            ) : (
-              <>
-                <span onClick={() => toggleComplete(task.id)}>
-                  {task.completed ? "✅" : "⬜"} {task.text}
-                </span>
-                <div>
-                  <button onClick={() => startEditing(task.id, task.text)}>
-                    Edit
-                  </button>
-                  <button onClick={() => deleteTask(task.id)}>Remove</button>
-                </div>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="tasks">
+          {(provided) => (
+            <ul {...provided.droppableProps} ref={provided.innerRef}>
+              {filteredTasks.map((task, index) => (
+                <Draggable key={task.id} draggableId={task.id} index={index}>
+                  {(provided) => (
+                    <li
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      className={task.completed ? "completed" : ""}
+                    >
+                      {editingTaskId === task.id ? (
+                        <>
+                          <input
+                            type="text"
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                          />
+                          <button onClick={() => saveEdit(task.id)}>
+                            Save
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span onClick={() => toggleComplete(task.id)}>
+                            {task.completed ? "✅" : "⬜"} {task.text}
+                          </span>
+                          <div>
+                            <button
+                              onClick={() => startEditing(task.id, task.text)}
+                            >
+                              Edit
+                            </button>
+                            <button onClick={() => deleteTask(task.id)}>
+                              Remove
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </li>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </ul>
+          )}
+        </Droppable>
+      </DragDropContext>
     </div>
   );
 };
